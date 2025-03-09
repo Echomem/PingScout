@@ -1,0 +1,19 @@
+timeout: 2      # ping超时时间，单位：秒
+interval: 1     # ping间隔时间，单位：秒
+targets:
+  - name: Google DNS
+    ip: 8.8.8.8
+  - name: Tencent DNS1
+    ip: 119.29.29.29
+  - name: Tencent DNS2
+    ip: 182.254.116.116
+  - name: 114DNS(Test for Failed)
+    ip: 114.114.114.114
+  - name: Ali DNS1
+    ip: 223.5.5.5
+  - name: Ali DNS2
+    ip: 223.6.6.6
+    
+logging:
+  log_dir: ./log
+  max_days: 30      # 日志保留天数
