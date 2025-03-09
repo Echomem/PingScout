@@ -1,0 +1,2 @@
+# PingScout
+通过不间断发送ICMP包（类似ping）确定目标地址是否在线或者网络线路是否中断的Python项目
