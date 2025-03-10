@@ -13,8 +13,12 @@ from concurrent.futures import ThreadPoolExecutor
 
 class ICMPError(Exception):
     def __init__(self, message):
+        super().__init__()
         self.message = message
-        super().__init__(self.message)
+
+    def __str__(self):
+        return self.message
+    
 
 class ICMPSender:
     def __init__(self, ip):
@@ -40,10 +44,10 @@ class ICMPSender:
             icmp = socket.getprotobyname('icmp')
             # 创建一个原始套接字
             self.sock = socket.socket(socket.AF_INET, socket.SOCK_RAW, icmp)
+        except PermissionError:
+            raise ICMPError(f"没有足够的权限创建套接字，请使用管理员权限运行")
         except socket.error as e:
-            self.sock = None
             raise ICMPError(f"创建套接字时出错: {e}")
-        
         # 记录发送时间
         send_time = time.time()
         # 生成ICMP包

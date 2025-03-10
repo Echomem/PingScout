@@ -46,7 +46,7 @@ class NetworkMonitorGUI:
             lbl.pack(side="left", padx=5, pady=5)
 
         # 日志显示区域
-        self.log_area = scrolledtext.ScrolledText(self.root, height=30, state='normal')
+        self.log_area = scrolledtext.ScrolledText(self.root, height=30, state='disabled')
         self.log_area.pack(padx=5, pady=5, fill='both', expand=True)
     
         # 控制按钮区域
@@ -56,20 +56,27 @@ class NetworkMonitorGUI:
     def process_events(self):
         try:
             event = self.monitor.event_queue.get_nowait()
-            if event.status == 'reachable':
-                self.status_dots[event.ip].change_status('reachable')
-                log_line = f"[{event.timestamp}] {event.ip}可达 - 延迟: {event.rtt:.0f}ms\n"
-                self.log_area.insert(tk.END, log_line)
-                self.log_area.see(tk.END)
-            elif event.status == 'unreachable':
-                self.status_dots[event.ip].change_status('unreachable')
-                log_line = f"[{event.timestamp}] {event.ip} - 不可达\n"
-                self.log_area.insert(tk.END, log_line)
-                self.log_area.see(tk.END)
+            if self.running:
+                self.update_ui(event)
         except queue.Empty:
             pass
         self.root.after(100, self.process_events)
     
+    def update_ui(self, event):
+        """ 更新UI界面 """
+        log_line = ""
+        if event.status == 'reachable':
+            log_line = f"[{event.timestamp}] {event.ip}可达 - 延迟: {event.rtt:.0f}ms\n"
+            self.status_dots[event.ip].change_status('reachable')
+        elif event.status == 'unreachable':
+            log_line = f"[{event.timestamp}] {event.ip} - 不可达\n"
+        else:
+            pass
+        self.status_dots[event.ip].change_status(event.status)
+        self.log_area.config(state='normal')
+        self.log_area.insert(tk.END, log_line)
+        self.log_area.see(tk.END)
+        self.log_area.config(state='disabled')
 
     def toggle_monitoring(self):
         """ 切换监控按钮事件处理 """
