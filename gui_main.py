@@ -40,10 +40,15 @@ class NetworkMonitorGUI:
         self.status_frame.pack(padx=10, pady=5, fill='x')
         # 初始化状态标签
         self.status_dots = {}
+        self.status_labels = {}
         for target in self.monitor.config['targets']:
             self.status_dots[target['ip']] = StatusDot(self.status_frame)
             lbl = ttk.Label(self.status_frame, text=target['name'])
             lbl.pack(side="left", padx=5, pady=5)
+            lbl_status = ttk.Label(self.status_frame, text='-ms')
+            lbl_status.pack(side="left", padx=0, pady=5)
+            self.status_labels[target['ip']] = lbl_status
+
 
         # 日志显示区域
         self.log_area = scrolledtext.ScrolledText(self.root, height=30, state='disabled')
@@ -67,9 +72,10 @@ class NetworkMonitorGUI:
         log_line = ""
         if event.status == 'reachable':
             log_line = f"[{event.timestamp}] {event.ip}可达 - 延迟: {event.rtt:.0f}ms\n"
-            self.status_dots[event.ip].change_status('reachable')
+            self.status_labels[event.ip].config(text=f"{event.rtt:.0f}ms")
         elif event.status == 'unreachable':
             log_line = f"[{event.timestamp}] {event.ip} - 不可达\n"
+            self.status_labels[event.ip].config(text=f"-ms")
         else:
             pass
         self.status_dots[event.ip].change_status(event.status)
@@ -97,6 +103,8 @@ class NetworkMonitorGUI:
         self.toggle_btn.config(text="启动监控")
         for ip, dot in self.status_dots.items():
             dot.change_status('init')
+        for ip, lbl in self.status_labels.items():
+            lbl.config(text='-ms')
 
     def run(self):
         self.root.mainloop()
