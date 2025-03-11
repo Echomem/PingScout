@@ -1,5 +1,5 @@
 timeout: 2      # ping超时时间，单位：秒
-interval: 1     # ping间隔时间，单位：秒
+interval: 5     # ping间隔时间，单位：秒
 targets:
   - name: Google DNS
     ip: 8.8.8.8

@@ -112,13 +112,15 @@ class ICMPMonitor:
 
         # 创建按天滚动的文件处理器
         handler = TimedRotatingFileHandler(
-            filename=f"{log_dir}/log-{time.strftime("%Y-%m-%d")}.txt",
-            when="D",
+            filename=f"{log_dir}/log.txt",
+            when="midnight",
             interval=1,
-            backupCount=self.config['logging']['max_days']
+            backupCount=self.config['logging']['max_days'],
+            encoding='utf-8'
         )
         formatter = logging.Formatter('%(asctime)s - %(message)s')
         handler.setFormatter(formatter)
+        handler.suffix = "%Y-%m-%d.txt"
         logger.addHandler(handler)
         return logger
 
@@ -142,13 +144,11 @@ class ICMPMonitor:
             loop = asyncio.get_running_loop()
             result = await loop.run_in_executor(executor, self.sync_ping, ip)
             if result:
-                current_time = time.localtime()
-                if current_time.tm_hour == 0 and current_time.tm_min == 0:  # 每天 0 点手动分割日志
-                    for handler in self.logger.handlers:
-                        if isinstance(handler, TimedRotatingFileHandler):
-                            handler.doRollover()
                 self.event_queue.put(result)
-                self.logger.info(f"Ping {ip}: {result.status}, RTT: {result.rtt:.0f} ms")
+                if result.status == 'reachable':
+                    self.logger.info(f"{ip}:可达 - 延迟：{result.rtt:.0f} ms")
+                elif result.status == 'unreachable':
+                    self.logger.info(f"{ip}:不可达")
         except Exception as e:
             self.logger.error(f"发生错误: {e}")
 

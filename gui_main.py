@@ -105,6 +105,7 @@ class NetworkMonitorGUI:
             dot.change_status('init')
         for ip, lbl in self.status_labels.items():
             lbl.config(text='-ms')
+        self.monitor = ICMPMonitor()    # 重新初始化监控器，防止老线程继续运行。
 
     def run(self):
         self.root.mainloop()
