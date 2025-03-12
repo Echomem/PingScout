@@ -1,7 +1,7 @@
 import queue
 import tkinter as tk
 from tkinter import ttk, scrolledtext
-from icmp_monitor import ICMPMonitor
+from ping_monitor import PingMonitor, PingResult
 
 class StatusDot:
     """ 状态圆点控件 """
@@ -26,7 +26,7 @@ class StatusDot:
 
 class NetworkMonitorGUI:
     def __init__(self):
-        self.monitor = ICMPMonitor()
+        self.monitor = PingMonitor()
         self.setup_ui()
         self.running = False
         self.root.after(100, self.process_events)
@@ -60,7 +60,7 @@ class NetworkMonitorGUI:
 
     def process_events(self):
         try:
-            event = self.monitor.event_queue.get_nowait()
+            event = self.monitor.ping_events.get_nowait()
             if self.running:
                 self.update_ui(event)
         except queue.Empty:
@@ -70,10 +70,10 @@ class NetworkMonitorGUI:
     def update_ui(self, event):
         """ 更新UI界面 """
         log_line = ""
-        if event.status == 'reachable':
-            log_line = f"[{event.timestamp}] {event.ip}可达 - 延迟: {event.rtt:.0f}ms\n"
-            self.status_labels[event.ip].config(text=f"{event.rtt:.0f}ms")
-        elif event.status == 'unreachable':
+        if event.status == PingResult.REACHABLE:
+            log_line = f"[{event.timestamp}] {event.ip}可达 - 平均延迟: {event.avg_rtt:.0f}ms 丢包率:{event.loss_rate}%\n"
+            self.status_labels[event.ip].config(text=f"{event.avg_rtt:.0f}ms")
+        elif event.status == PingResult.UNREACHABLE:
             log_line = f"[{event.timestamp}] {event.ip} - 不可达\n"
             self.status_labels[event.ip].config(text=f"-ms")
         else:
@@ -105,7 +105,7 @@ class NetworkMonitorGUI:
             dot.change_status('init')
         for ip, lbl in self.status_labels.items():
             lbl.config(text='-ms')
-        self.monitor = ICMPMonitor()    # 重新初始化监控器，防止老线程继续运行。
+        self.monitor = PingMonitor()    # 重新初始化监控器，防止老线程继续运行。
 
     def run(self):
         self.root.mainloop()

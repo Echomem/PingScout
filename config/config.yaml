@@ -1,5 +1,7 @@
 timeout: 2      # ping超时时间，单位：秒
 interval: 5     # ping间隔时间，单位：秒
+count: 4        # ping次数
+
 targets:
   - name: Google DNS
     ip: 8.8.8.8
@@ -17,3 +19,23 @@ targets:
 logging:
   log_dir: ./log
   max_days: 30      # 日志保留天数
+
+alert:
+  # 触发报警条件
+  condition:    
+    max_loss: 20     # 丢包率阈值%
+    max_delay: 600   # 延迟阈值，单位：毫秒
+  # 报警声音配置
+  sound:
+    enable: false
+    sound_file: ./alert.wav
+  # 报警email配置
+  email:
+    enable: false
+    smtp_server: smtp.qq.com
+    smpt_port: 25
+    sender_email: your_email@qq.com
+    sender_password: your_password
+    receiver_emails:
+      - EMAIL: receiver1_email@qq.com
+      - EMAIL: receiver2_email@qq.com
