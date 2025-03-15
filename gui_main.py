@@ -1,7 +1,9 @@
+import asyncio
 import queue
 import tkinter as tk
 from tkinter import ttk, scrolledtext
 from ping_monitor import PingMonitor, PingResult
+from alert import Alert
 
 class StatusDot:
     """ 状态圆点控件 """
@@ -29,6 +31,7 @@ class NetworkMonitorGUI:
         self.monitor = PingMonitor()
         self.setup_ui()
         self.running = False
+        self.alert = Alert(self.monitor.logger)
         self.root.after(100, self.process_events)
     
     def setup_ui(self):
@@ -63,6 +66,7 @@ class NetworkMonitorGUI:
             event = self.monitor.ping_events.get_nowait()
             if self.running:
                 self.update_ui(event)
+                self.alert.process_alert(event)
         except queue.Empty:
             pass
         self.root.after(100, self.process_events)
@@ -71,13 +75,12 @@ class NetworkMonitorGUI:
         """ 更新UI界面 """
         log_line = ""
         if event.status == PingResult.REACHABLE:
-            log_line = f"[{event.timestamp}] {event.ip}可达 - 平均延迟: {event.avg_rtt:.0f}ms 丢包率:{event.loss_rate}%\n"
+            log_line = f"[{event.timestamp}] {event.ip}可达 - 最大延迟: {event.max_rtt:.0f}ms 最小延迟: {event.min_rtt:.0f}ms  平均延迟: {event.avg_rtt:.0f}ms 丢包率:{event.loss_rate}%\n"
             self.status_labels[event.ip].config(text=f"{event.avg_rtt:.0f}ms")
-        elif event.status == PingResult.UNREACHABLE:
+        else:
             log_line = f"[{event.timestamp}] {event.ip} - 不可达\n"
             self.status_labels[event.ip].config(text=f"-ms")
-        else:
-            pass
+
         self.status_dots[event.ip].change_status(event.status)
         self.log_area.config(state='normal')
         self.log_area.insert(tk.END, log_line)
@@ -106,6 +109,7 @@ class NetworkMonitorGUI:
         for ip, lbl in self.status_labels.items():
             lbl.config(text='-ms')
         self.monitor = PingMonitor()    # 重新初始化监控器，防止老线程继续运行。
+        self.alert = Alert(self.monitor.logger)
 
     def run(self):
         self.root.mainloop()

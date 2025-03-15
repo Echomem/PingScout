@@ -1,6 +1,6 @@
-timeout: 2      # ping超时时间，单位：秒
+timeout: 1      # ping超时时间，单位：秒
 interval: 5     # ping间隔时间，单位：秒
-count: 4        # ping次数
+count: 1        # ping次数 - 每次ping发送的SMTP包的数量
 
 targets:
   - name: Google DNS
@@ -21,21 +21,22 @@ logging:
   max_days: 30      # 日志保留天数
 
 alert:
-  # 触发报警条件
+  # 触发报警条件， 满足一个条件即可触发报警
   condition:    
-    max_loss: 20     # 丢包率阈值%
-    max_delay: 600   # 延迟阈值，单位：毫秒
+    max_loss_rate: 20     # 丢包率阈值%
+    max_rtt: 600        # 延迟阈值，单位：毫秒
   # 报警声音配置
   sound:
-    enable: false
-    sound_file: ./alert.wav
+    enable: true
+    sound_file: ./resources/alarm.wav
   # 报警email配置
   email:
     enable: false
-    smtp_server: smtp.qq.com
-    smpt_port: 25
-    sender_email: your_email@qq.com
-    sender_password: your_password
-    receiver_emails:
-      - EMAIL: receiver1_email@qq.com
-      - EMAIL: receiver2_email@qq.com
+    smtp_server: smtp.server.com
+    smpt_port: 465
+    username: username
+    password: password   # 可以在环境变量EMAIL_PASSWORD中配置密码，优先级高于此处配置，用于避免密码明文暴露
+    subject: 网络异常报警
+    recipients:
+      - recipient1@example.com
+      - recipient2@example.com

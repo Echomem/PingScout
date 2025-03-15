@@ -19,9 +19,19 @@
    - 打开config/config.yaml文件。
    - 根据需要修改配置项，例如目标IP地址、名称、超时时间、检测间隔时间等。
 6. 运行PingScout：
+   默认使用图形界面启动：
    ```
    python run.py
    ```
+   或者使用命令行启动：
+   ```
+   python run.py -c 
+   ```
+
+## 项目结构：
+- config/config.yaml：配置文件，用于设置目标IP地址、名称、超时时间、检测间隔时间等。
+- log/log.txt：日志文件，用于记录检测结果。
+- resources/：资源文件目录，包括告警声音等。
 
 ## 使用说明：
 - config/config.yaml中配置需要监测的目标地址。

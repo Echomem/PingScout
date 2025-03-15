@@ -1,12 +1,11 @@
-import asyncio
-import threading
 import time
 import socket
 import struct
-import random
-import logging
 import yaml
+import logging
 from logging.handlers import TimedRotatingFileHandler
+import threading
+import random
 import os
 import queue
 from concurrent.futures import ThreadPoolExecutor
@@ -107,20 +106,22 @@ class PingResult:
     REACHABLE = 'reachable'
     UNREACHABLE = 'unreachable'
 
-    def __init__(self, ip, loss_rate=100, rtts=None):
+    def __init__(self, ip, successful_count=0, loss_rate=100, rtts=None):
         self.timestamp = time.strftime('%Y-%m-%d %H:%M:%S')
         self.ip = ip 
+        self.successful_count = successful_count
         self.loss_rate = loss_rate
         if loss_rate >= 100:
             self.status = self.UNREACHABLE
         else:
             self.status = self.REACHABLE
-            if rtts:
-                self.avg_rtt = sum(rtts) / len(rtts)
+        self.avg_rtt = sum(rtts) / len(rtts) if rtts else None
+        self.max_rtt = max(rtts) if rtts else None
+        self.min_rtt = min(rtts) if rtts else None
 
     def __str__(self):
         if self.status == self.REACHABLE:
-            return f"{self.timestamp} Ping - {self.ip}: {self.status} 丢包率:{self.loss_rate}% 平均时延:{self.avg_rtt:.0f}ms"
+            return f"{self.timestamp} Ping - {self.ip}: {self.status} 最大时延:{self.max_rtt:.0f}ms 最小时延:{self.min_rtt:.0f}ms 平均时延:{self.avg_rtt:.0f}ms 丢包率:{self.loss_rate}%"
         return f"{self.timestamp} Ping - {self.ip}: {self.status}"
 
 class PingMonitor:
@@ -130,6 +131,8 @@ class PingMonitor:
         self.logger = self.setup_logger()
         self.ping_events = queue.Queue()
         self.running = False
+        self.thread_num = len(self.config['targets'])
+        self.thread_num = self.thread_num if self.thread_num > 1 else 1
 
     def load_config(self):
         with open('config/config.yaml', encoding='utf-8') as f:
@@ -156,45 +159,39 @@ class PingMonitor:
         logger.addHandler(handler)
         return logger
 
-    def sync_ping(self, ip):
-        """ 同步的 ping 操作函数 """
+    def ping(self, ip):
+        """ 同步函数 ping 并返回结果 """
         sender = ICMPSender(ip)
         try:
             rtts, successful_count, failed_count = sender.send(self.config['count'], self.config['timeout'])
             loss_rate = failed_count / self.config['count'] * 100   # 计算丢包率
-            return PingResult(ip, loss_rate, rtts)
+            return PingResult(ip, successful_count, loss_rate, rtts)
         except Exception as e:
-            self.logger.error(f"sync_ping发生错误: {e}") 
+            self.logger.error(f"ping发生错误: {e}") 
             return None
 
-    async def async_ping(self, ip, executor):
-        """异步的 ping 操作函数"""
+    def _ping(self, ip):
+        """ 调用ping函数并将结果存入队列 """
         try:
-            loop = asyncio.get_running_loop()
-            result = await loop.run_in_executor(executor, self.sync_ping, ip)
+            result = self.ping(ip)
             if result:
                 self.ping_events.put(result)
                 self.logger.info(result)
         except Exception as e:
-            self.logger.error(f"async_ping发生错误: {e}")
+            self.logger.error(f"_ping发生错误: {e}")
 
-    async def monitor_targets(self):
-        """主异步函数，用于管理多个 ping 请求"""
-        while self.running: 
-            with ThreadPoolExecutor() as executor:
-                tasks = [self.async_ping(target['ip'], executor) for target in self.config['targets']]
-                await asyncio.gather(*tasks)        
-            await asyncio.sleep(self.config['interval'])
+    def monitor_targets(self):
+        """ 使用线程池发送多个 ping 请求 """
+        with ThreadPoolExecutor(max_workers=self.thread_num) as executor:
+            while self.running: 
+                for target in self.config['targets']:
+                    executor.submit(self._ping, target['ip'])      
+                time.sleep(self.config['interval'])
 
     def start(self):
-        """ 启动监控器，不阻塞（开启一个新的线程） """
+        # 启动监控器，不阻塞（开启一个新的线程）
         self.running = True
-        def inner_monitor():
-            loop = asyncio.new_event_loop()
-            asyncio.set_event_loop(loop)
-            loop.run_until_complete(self.monitor_targets())
-            loop.close()
-        thread = threading.Thread(target=inner_monitor)
+        thread = threading.Thread(target=self.monitor_targets)
         thread.daemon = True    #设置为守护线程，主线程退出时子线程也会退出
         thread.start()
 
