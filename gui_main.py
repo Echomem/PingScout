@@ -1,4 +1,3 @@
-import asyncio
 import queue
 import tkinter as tk
 from tkinter import ttk, scrolledtext
