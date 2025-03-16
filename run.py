@@ -12,11 +12,10 @@ def console_main():
     try:
         monitor = PingMonitor()
         monitor.start()
-        alert = Alert(monitor.logger)
+        alert = Alert(logging.getLogger())
         while True:
             try:
                 event = monitor.ping_events.get()
-                logging.info(event)
                 alert.process_alert(event)
             except KeyboardInterrupt:
                 monitor.stop()

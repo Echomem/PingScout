@@ -1,4 +1,5 @@
 import os
+import threading
 import yaml
 import smtplib
 from email.mime.text import MIMEText
@@ -20,6 +21,8 @@ class Alert:
         self.enable_email = self.config['alert']['email']['enable']
         self.condition_max_rtt = self.config['alert']['condition']['max_rtt']
         self.condition_loss_rate = self.config['alert']['condition']['max_loss_rate']
+        self.executor = ThreadPoolExecutor(max_workers=2)
+        self.sound_lock = threading.Lock()
         pygame.mixer.init()
         
 
@@ -40,8 +43,9 @@ class Alert:
         # 播放声音
         
         try:
-            sound = pygame.mixer.Sound(sound_file)
-            sound.play()
+            with self.sound_lock:
+                sound = pygame.mixer.Sound(sound_file)
+                sound.play()
         except pygame.error as e:
             self.logger.error(f"播放声音发生错误: {e}")
 
@@ -86,14 +90,13 @@ class Alert:
     def process_alert(self, ping_result):
         if not self.check_alert_conditions(ping_result):
             return 
-        with ThreadPoolExecutor(max_workers=2) as executor:
-            if self.enable_sound:
-                executor.submit(self.play_alarm)
-            if self.enable_email:
-                message = ""
-                if ping_result.status == PingResult.UNREACHABLE:
-                    message = f"{ping_result.timestamp} - 报警：\nIP: {ping_result.ip}\n状态: {ping_result.status}"
-                else:
-                    message = f"{ping_result.timestamp} - 报警：\nIP: {ping_result.ip}\n状态: {ping_result.status}\n最大时延: {ping_result.max_rtt}ms\n最小时延: {ping_result.min_rtt}ms\n平均时延: {ping_result.avg_rtt}ms\n丢包率: {ping_result.loss_rate}%"
-                # 后台线程发送邮件
-                executor.submit(self.send_email, message)
+        if self.enable_sound:
+            self.executor.submit(self.play_alarm)
+        if self.enable_email:
+            message = ""
+            if ping_result.status == PingResult.UNREACHABLE:
+                message = f"{ping_result.timestamp} - 报警：\nIP: {ping_result.ip}\n状态: {ping_result.status}"
+            else:
+                message = f"{ping_result.timestamp} - 报警：\nIP: {ping_result.ip}\n状态: {ping_result.status}\n最大时延: {ping_result.max_rtt}ms\n最小时延: {ping_result.min_rtt}ms\n平均时延: {ping_result.avg_rtt}ms\n丢包率: {ping_result.loss_rate}%"
+            # 后台线程发送邮件
+            self.executor.submit(self.send_email, message)

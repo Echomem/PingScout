@@ -28,15 +28,18 @@ class StatusDot:
 class NetworkMonitorGUI:
     def __init__(self):
         self.monitor = PingMonitor()
-        self.setup_ui()
-        self.running = False
         self.alert = Alert(self.monitor.logger)
+        self.running = False
+        self.setup_ui()
         self.root.after(100, self.process_events)
     
     def setup_ui(self):
         self.root = tk.Tk()
         self.root.title("网络状态监控系统")
-
+        try:
+            self.root.iconbitmap("resources/pingscout.ico")
+        except tk.TclError:
+            self.monitor.logger.warning("未找到图标文件，将使用默认图标。")
         # 状态标签容器
         self.status_frame = ttk.LabelFrame(self.root, text="监控目标状态")
         self.status_frame.pack(padx=10, pady=5, fill='x')
@@ -50,7 +53,6 @@ class NetworkMonitorGUI:
             lbl_status = ttk.Label(self.status_frame, text='-ms')
             lbl_status.pack(side="left", padx=0, pady=5)
             self.status_labels[target['ip']] = lbl_status
-
 
         # 日志显示区域
         self.log_area = scrolledtext.ScrolledText(self.root, height=30, state='disabled')
@@ -103,9 +105,9 @@ class NetworkMonitorGUI:
         """ 停止监控 """
         self.monitor.stop()
         self.toggle_btn.config(text="启动监控")
-        for ip, dot in self.status_dots.items():
+        for dot in self.status_dots.values():
             dot.change_status('init')
-        for ip, lbl in self.status_labels.items():
+        for lbl in self.status_labels.values():
             lbl.config(text='-ms')
         self.monitor = PingMonitor()    # 重新初始化监控器，防止老线程继续运行。
         self.alert = Alert(self.monitor.logger)
